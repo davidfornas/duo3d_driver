@@ -31,9 +31,19 @@ include_directories(include
 add_definitions(-std=c++11)
 
 add_executable(duo3d_driver src/duo3d_driver.cpp)
+add_executable(duo3d_driver_external_calibration src/duo3d_driver_external_calibration.cpp)
+
 
 target_link_libraries(duo3d_driver 
                       ${CMAKE_CURRENT_SOURCE_DIR}/lib/libDUO.so
+                      ${CMAKE_CURRENT_SOURCE_DIR}/lib/libDense3D.so
+                      ${CMAKE_CURRENT_SOURCE_DIR}/lib/libDense3DMT.so
+                      ${catkin_LIBRARIES}
+)
+
+target_link_libraries(duo3d_driver_external_calibration
+                      ${CMAKE_CURRENT_SOURCE_DIR}/lib/libDUO.so
+                      ${CMAKE_CURRENT_SOURCE_DIR}/lib/libDense3D.so
                       ${CMAKE_CURRENT_SOURCE_DIR}/lib/libDense3DMT.so
                       ${catkin_LIBRARIES}
 )
