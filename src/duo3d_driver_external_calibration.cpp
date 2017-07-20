@@ -270,54 +270,30 @@ protected:
 
     void dynamicCallback(Duo3DConfig &config, uint32_t level)
     {
-        if(!_duoInstance) return;
-        //DUOInstance duo = GetDUOInstance(_dense3dInstance);
+        if(!_duoInstance) return;        
+        if(!_dense3dInstance) return;
         // Set DUO parameters
-        if(_duoInstance)
-        {
-            SetDUOGain(_duoInstance, config.gain);
-            SetDUOExposure(_duoInstance, config.exposure);
-            SetDUOAutoExposure(_duoInstance, config.auto_exposure);
-            SetDUOCameraSwap(_duoInstance, config.camera_swap);
-            SetDUOHFlip(_duoInstance, config.horizontal_flip);
-            SetDUOVFlip(_duoInstance, config.vertical_flip);
-            SetDUOLedPWM(_duoInstance, config.led);
-            SetDUOIMURange(_duoInstance, config.accel_range, config.gyro_range);
-            SetDUOIMURate(_duoInstance, config.imu_rate);
-        }
+        SetDUOGain(_duoInstance, config.gain);
+        SetDUOExposure(_duoInstance, config.exposure);
+        SetDUOAutoExposure(_duoInstance, config.auto_exposure);
+        SetDUOCameraSwap(_duoInstance, config.camera_swap);
+        SetDUOHFlip(_duoInstance, config.horizontal_flip);
+        SetDUOVFlip(_duoInstance, config.vertical_flip);
+        SetDUOLedPWM(_duoInstance, config.led);
+        SetDUOIMURange(_duoInstance, config.accel_range, config.gyro_range);
+        SetDUOIMURate(_duoInstance, config.imu_rate);
+        SetDUOUndistort(_duoInstance, config.undistort); // DF TODO Make it modififable with image topic change
+
         // Set Dense3D parameters
-        // DF: DO IT With the single Thread func.
-        /*
-        Dense3DParams params;
-        params.mode = config.processing_mode;
-        params.scale = config.image_scale;
-        params.numDisparities = config.num_disparities;
-        params.sadWindowSize = config.sad_window_size;
-        params.preFilterCap = config.pre_filter_cap;
-        params.uniqenessRatio = config.uniqueness_ratio;
-        params.speckleWindowSize = config.speckle_window_size;
-        params.speckleRange = config.speckle_range;
-        SetDense3Params(_dense3dInstance, params);
+        SetDense3DScale(_dense3dInstance, config.image_scale);//3
+        SetDense3DMode(_dense3dInstance, config.processing_mode);//0
+        SetDense3DNumDisparities(_dense3dInstance, config.num_disparities);//4
+        SetDense3DSADWindowSize(_dense3dInstance, config.sad_window_size);//6
+        SetDense3DPreFilterCap(_dense3dInstance, config.pre_filter_cap);//28
+        SetDense3DUniquenessRatio(_dense3dInstance, config.uniqueness_ratio);//27
+        SetDense3DSpeckleWindowSize(_dense3dInstance, config.speckle_window_size);//52
+        SetDense3DSpeckleRange(_dense3dInstance, config.speckle_range);//14
 
-// Set Dense3D image scale [0, 3] - [No Scale, Scale X, Scale Y, Scale X&Y]
-API_FUNCTION(bool) SetDense3DScale(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D processing mode [0, 3] - [BM, SGBM, BM_HQ, SGBM_HQ]
-API_FUNCTION(bool) SetDense3DMode(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D pre-filter cap [1, 63]
-API_FUNCTION(bool) SetDense3DPreFilterCap(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D number of disparities [2, 16] resulting in [32, 256] disparities
-API_FUNCTION(bool) SetDense3DNumDisparities(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D SAD window size [2, 10] resulting in [5, 21] window sizes
-API_FUNCTION(bool) SetDense3DSADWindowSize(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D uniqueness ratio [1, 100]
-API_FUNCTION(bool) SetDense3DUniquenessRatio(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D speckle window size [0, 256]
-API_FUNCTION(bool) SetDense3DSpeckleWindowSize(Dense3DInstance dense3D, uint32_t val);
-// Set Dense3D speckle range [0, 32]
-API_FUNCTION(bool) SetDense3DSpeckleRange(Dense3DInstance dense3D, uint32_t val);
-
-
-        */
     }
 
     void duoCallback(const PDUOFrame duoFrame)
@@ -490,8 +466,6 @@ API_FUNCTION(bool) SetDense3DSpeckleRange(Dense3DInstance dense3D, uint32_t val)
     bool fillCameraInfo() //CHECK PARAMETERS
     {
         if(!_duoInstance) return false;
-        //DUOInstance duo = GetDUOInstance(_dense3dInstance);
-        //if(!duo) return false;
         DUO_STEREO stereo;
         if(!GetDUOStereoParameters(_duoInstance, &stereo))
         {
@@ -555,7 +529,7 @@ API_FUNCTION(bool) SetDense3DSpeckleRange(Dense3DInstance dense3D, uint32_t val)
         if(!Dense3DOpen(&_dense3dInstance))
         {
             ROS_ERROR("Could not open Dense3D library");
-            //CloseDUOCamera()
+            closeDense3D();
             /*	if(_duo == NULL)
                   return;
                 // Stop capture
@@ -569,52 +543,25 @@ API_FUNCTION(bool) SetDense3DSpeckleRange(Dense3DInstance dense3D, uint32_t val)
         if(!SetDense3DLicense(_dense3dInstance, _dense3d_license.c_str()))
         {
             ROS_ERROR("Invalid or missing Dense3D license. To get your license visit https://duo3d.com/account");
-            //CloseDUOCamera again  & dense 3d...
+            closeDense3D(); //CloseDUOCamera again  & dense 3d...
             return false;
         }
-        // Set the image size
-//        if(!SetDense3DImageInfo(_dense3dInstance, width(), height(), fps()))
-//        {
-//            ROS_ERROR("Invalid image size");
-//            return false;
-//        }
         if(!SetDense3DImageSize(_dense3dInstance, width(), height()))
         {
             ROS_ERROR("Invalid image size");
-            //Close DUOCamera & Dense3D
+            closeDense3D();
             return false;
         }
-
         DUO_STEREO params;
         if(!GetDUOStereoParameters(_duoInstance, &params))
         {
           printf("Could not get DUO camera calibration data\n");
-          // Close DUO camera
-          //CloseDUOCamera();
+          closeDense3D();
           // Close Dense3D library
           //Dense3DClose(dense3d);
           return 1;
         }
         SetDense3DCalibration(_dense3dInstance, &params);
-        /*
-        // Set Dense3D parameters
-        SetDense3DScale(dense3d, 3);
-        SetDense3DMode(dense3d, 0);
-        SetDense3DCalibration(dense3d, &params);
-        SetDense3DNumDisparities(dense3d, 4);
-        SetDense3DSADWindowSize(dense3d, 6);
-        SetDense3DPreFilterCap(dense3d, 28);
-        SetDense3DUniquenessRatio(dense3d, 27);
-        SetDense3DSpeckleWindowSize(dense3d, 52);
-        SetDense3DSpeckleRange(dense3d, 14);
-        // Set exposure, LED brightness and camera orientation
-        SetExposure(85);
-        SetLed(28);
-        SetVFlip(true);
-        // Enable retrieval of undistorted (rectified) frames
-        SetUndistort(true);*/
-
-
         return true;
     }
     void closeDense3D()
